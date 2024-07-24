@@ -115,6 +115,9 @@ public class Game : Module
 		// update top scene
 		if (scenes.TryPeek(out var scene))
 		{
+			if (scene is not Celeste64.Startup)
+				TAS.Manager.Update();
+
 			var pausing = 
 				transitionStep == TransitionStep.FadeIn && transition.FromPause ||
 				transitionStep == TransitionStep.FadeOut && transition.ToPause;
@@ -299,6 +302,8 @@ public class Game : Module
 			// draw the world to the target
 			if (scenes.TryPeek(out var scene))
 				scene.Render(target);
+
+			TAS.Manager.Render(target);
 
 			// draw screen wipe over top
 			if (transitionStep != TransitionStep.None && transition.ToBlack != null)

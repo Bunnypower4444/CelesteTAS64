@@ -23,7 +23,10 @@
 		"OptionsTimer": "Timer",
 		"OptionsBGM": "BGM",
 		"OptionsSFX": "SFX",
-		"OptionsInvertCamera": "Inverted Camera"
+		"OptionsInvertCamera": "Inverted Camera",
+		"TASOptionsTitle": "TAS Options",
+		"TASSelect": "Select TAS",
+		"TASSelectTitle": "Select a TAS"
 	},
 	"Dialog":
 	{
