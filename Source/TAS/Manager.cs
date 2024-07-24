@@ -3,7 +3,7 @@ namespace Celeste64.TAS;
 
 public static class Manager
 {
-    public const string VersionString = "CelesteTAS 64 v1.0.0";
+    public const string VersionString = "CelesteTAS 64 v0.1.0";
 
     public static readonly Dictionary<string, TAS> TASes = [];
     public static TAS? CurrentTAS { get; private set; }
