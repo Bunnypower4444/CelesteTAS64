@@ -1,9 +1,11 @@
 
+using FosterInput = Foster.Framework.Input;
+
 namespace Celeste64.TAS;
 
 public static class Manager
 {
-    public const string VersionString = "CelesteTAS 64 v1.0.0";
+    public const string VersionString = "CelesteTAS 64 v0.2.0";
 
     public static readonly Dictionary<string, TAS> TASes = [];
     public static TAS? CurrentTAS { get; private set; }
@@ -11,7 +13,9 @@ public static class Manager
     private static bool initialized = false;
     private static bool menuOpen = false;
     private static readonly Batcher batch = new();
+
     private static bool paused = true;
+    private static bool recording = false;
 
     private static void SetMenuOpen(bool open)
     {
@@ -37,7 +41,8 @@ public static class Manager
         Input.BindControls();
     }
 
-    public static void Update()
+    // If the return value is false, freeze the game
+    public static bool Update()
     {
         if (!initialized)
         {
@@ -45,14 +50,14 @@ public static class Manager
             initialized = true;
         }
 
-        if (Foster.Framework.Input.Keyboard.Pressed(Keys.F5))
+        if (FosterInput.Keyboard.Pressed(Keys.F5))
             SetMenuOpen(!menuOpen);
 
         if (CurrentTAS != null)
         {
-            if (Foster.Framework.Input.Keyboard.Pressed(Keys.Space))
+            if (FosterInput.Keyboard.Pressed(Keys.Space))
                 paused = !paused;
-            if (Foster.Framework.Input.Keyboard.Pressed(Keys.Backspace))
+            if (FosterInput.Keyboard.Pressed(Keys.Backspace))
                 CurrentTAS.Reset();
         }
 
@@ -63,16 +68,20 @@ public static class Manager
         // Foster updates inputs before updating the Game
         else if (CurrentTAS != null && !CurrentTAS.Finished)
         {
-            if (!paused)
+            // Left bracket = frame advance
+            if (!paused || FosterInput.Keyboard.Pressed(Keys.LeftBracket))
             {
                 Input.Update(CurrentTAS.CurrentInput.State);
                 CurrentTAS.AdvanceFrame();
             }
-            else
-                Input.Update(default);
+            // Only freeze game if it hasn't started yet
+            else if (CurrentTAS.CurrentFrame > 0)
+                return false;
         }
         else
             Input.Update(default);
+
+        return true;
     }
 
     public static void LoadTASes()
@@ -115,6 +124,7 @@ public static class Manager
     {
         CurrentTAS = tas;
         paused = true;
+        recording = false;
     }
 
     private static readonly Menu optionsMenu = new();

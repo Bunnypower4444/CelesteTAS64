@@ -115,8 +115,8 @@ public class Game : Module
 		// update top scene
 		if (scenes.TryPeek(out var scene))
 		{
-			if (scene is not Celeste64.Startup)
-				TAS.Manager.Update();
+			if (scene is not Celeste64.Startup && !TAS.Manager.Update())
+				return;
 
 			var pausing = 
 				transitionStep == TransitionStep.FadeIn && transition.FromPause ||
