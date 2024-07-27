@@ -8,9 +8,9 @@ public static class Input
 
     internal static void BindControls()
     {
-        BindStick(Controls.Move, Actions.MoveX, Actions.MoveY, 0f, 0f);
+        BindStick(Controls.Move, StickActions.Move, 0f, 0f);
         BindStick(Controls.Menu, Actions.MenuUp, Actions.MenuDown, Actions.MenuLeft, Actions.MenuRight);
-        BindStick(Controls.Camera, Actions.CameraX, Actions.CameraY, 0f, 0f);
+        BindStick(Controls.Camera, StickActions.Camera, 0f, 0f);
 
         BindButton(Controls.Jump, Actions.Jump, Actions.Jump2);
         BindButton(Controls.Dash, Actions.Dash, Actions.Dash2);
@@ -33,12 +33,12 @@ public static class Input
     }
 
     private static void BindStick(VirtualStick stick,
-        Actions x, Actions y, float deadzoneX = 0, float deadzoneY = 0)
+        StickActions actions, float deadzoneX = 0, float deadzoneY = 0)
     {
-        stick.Horizontal.Negative.Add(-1, deadzoneX, x);
-        stick.Horizontal.Positive.Add(1, deadzoneX, x);
-        stick.Vertical.Negative.Add(-1, deadzoneY, y);
-        stick.Vertical.Positive.Add(1, deadzoneY, y);
+        stick.Horizontal.Negative.Add(-1, deadzoneX, StickAxis.X, actions);
+        stick.Horizontal.Positive.Add(1, deadzoneX, StickAxis.X, actions);
+        stick.Vertical.Negative.Add(-1, deadzoneY, StickAxis.Y, actions);
+        stick.Vertical.Positive.Add(1, deadzoneY, StickAxis.Y, actions);
     }
 
     internal static void Update(InputState state)
@@ -47,23 +47,28 @@ public static class Input
         CurrentState = state;
     }
 
-    public static float GetInputValue(Actions inputType)
+    public static bool GetInputValue(Actions inputType)
         => GetInputValue(inputType, CurrentState);
-    public static float GetInputValue(Actions inputType, InputState state)
+    public static bool GetInputValue(Actions inputType, InputState state)
     {
-        if (state.Actions.HasFlag(inputType))
+        return state.Actions.HasFlag(inputType);
+    }
+
+    public static float GetInputValue(StickActions inputType, StickAxis axis)
+        => GetInputValue(inputType, axis, CurrentState);
+    public static float GetInputValue(StickActions inputType, StickAxis axis, InputState state)
+    {
+        var vector = inputType switch
         {
-            return inputType switch
-            {
-                // Idk, there probably is a better implementation for sticks...
-                Actions.MoveX => state.Move.X,
-                Actions.MoveY => state.Move.Y,
-                Actions.CameraX => state.Camera.X,
-                Actions.CameraY => state.Camera.Y,
-                _ => 1
-            };
-        }
-        return 0;
+            StickActions.Move => state.Move,
+            StickActions.Camera => state.Camera,
+            _ => Vec2.Zero
+        };
+
+        if (axis == StickAxis.X)
+            return vector.X;
+        else
+            return vector.Y;
     }
 
     public static VirtualButton Add(this VirtualButton button, params Actions[] inputs)
@@ -87,22 +92,22 @@ public static class Input
         return button;
     }
 
-    public static VirtualButton Add(this VirtualButton button, int sign, float deadzone, params Actions[] inputs)
+    public static VirtualButton Add(this VirtualButton button, int sign, float deadzone, StickAxis axis, params StickActions[] inputs)
     {
         foreach (var type in inputs)
         {
-            button.Bindings.Add(new TASAxisBinding(type, sign, deadzone));
+            button.Bindings.Add(new TASAxisBinding(axis, type, sign, deadzone));
         }
 
         return button;
     }
 
     public static VirtualButton Add(this VirtualButton button,
-        VirtualButton.ConditionFn condition, int sign, float deadzone, params Actions[] inputs)
+        VirtualButton.ConditionFn condition, int sign, float deadzone, StickAxis axis, params StickActions[] inputs)
     {
         foreach (var type in inputs)
         {
-            button.Bindings.Add(new TASAxisBinding(type, sign, deadzone) { Enabled = condition });
+            button.Bindings.Add(new TASAxisBinding(axis, type, sign, deadzone) { Enabled = condition });
         }
 
         return button;

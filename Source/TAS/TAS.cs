@@ -136,9 +136,9 @@ public partial class TAS(List<TAS.InputRecord> inputs)
                         throw new ArgumentException("Vector Y-component is not a valid number");
                 }
 
-                if (vectorInputAction.Has(Actions.MoveX | Actions.MoveY))
+                if (vectorInputAction.Has(Actions.Move))
                     move = new(x, y);
-                if (vectorInputAction.Has(Actions.CameraX | Actions.CameraY))
+                if (vectorInputAction.Has(Actions.Camera))
                     camera = new(x, y);
 
                 vectorInputAction = Actions.None;
@@ -152,8 +152,7 @@ public partial class TAS(List<TAS.InputRecord> inputs)
                 if (newActions == Actions.None)
                     Log.Warning("Character is not a valid action: " + token);
 
-                if (newActions.Has(Actions.MoveX | Actions.MoveY |
-                    Actions.CameraX | Actions.CameraY))
+                if (newActions.Has(Actions.Move | Actions.Camera))
                     vectorInputAction = newActions;
             }
         }
@@ -163,12 +162,12 @@ public partial class TAS(List<TAS.InputRecord> inputs)
 
     private static Actions GetActionFromChar(string action) => action.ToUpper() switch
     {
-        "M" => Actions.MoveX | Actions.MoveY,
+        "M" => Actions.Move,
         "J" => Actions.Jump,
         "K" => Actions.Jump2,
         "X" => Actions.Dash,
         "C" => Actions.Dash2,
-        "E" => Actions.CameraX | Actions.CameraY,
+        "E" => Actions.Camera,
         "G" => Actions.Climb,
         "P" => Actions.Pause,
         "A" => Actions.Confirm,
