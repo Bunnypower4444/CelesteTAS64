@@ -53,7 +53,7 @@ public partial class TAS(List<TAS.InputRecord> inputs)
             throw new FileLoadException("File does not exist: " + path);
 
         List<InputRecord> inputs = [];
-        int lineNumber = 0;
+        int lineNumber = 1;
         foreach (var line in File.ReadAllLines(path))
         {
             try {
@@ -73,6 +73,9 @@ public partial class TAS(List<TAS.InputRecord> inputs)
 
     public static InputRecord ParseLine(string line)
     {
+        if (string.IsNullOrWhiteSpace(line))
+            return new(default, -1);
+
         // comment
         // TODO: add labels
         if (line.TrimStart().StartsWith('#'))
@@ -99,23 +102,39 @@ public partial class TAS(List<TAS.InputRecord> inputs)
                     throw new ArgumentException("Frame count is not an integer");
             }
 
-            // Parse a vector: x_component [space] y_component
+            // Parse a vector: angle or x_component [space] y_component
             if (vectorInputAction != Actions.None)
             {
                 float x, y;
                 var components = token.Split(' ');
-                if (components.Length < 2)
-                    throw new ArgumentException("Not enough components provided to vector");
+                if (components.Length <= 0)
+                    throw new ArgumentException("Expected a vector for action " + vectorInputAction.GetAbbreviation());
                 
-                if (float.TryParse(components[0], out var result))
-                    x = Calc.Clamp(result, -1, 1);
+                // angle
+                if (components.Length == 1)
+                {
+                    if (float.TryParse(components[0], out var result))
+                    {
+                        var vec = Calc.AngleToVector(result * Calc.DegToRad);
+                        x = vec.X;
+                        y = vec.Y;
+                    }
+                    else
+                        throw new ArgumentException("Vector angle is not a valid number");
+                }
+                // x [space] y
                 else
-                    throw new ArgumentException("Vector X-component is not a valid number");
+                {
+                    if (float.TryParse(components[0], out var result))
+                        x = Calc.Clamp(result, -1, 1);
+                    else
+                        throw new ArgumentException("Vector X-component is not a valid number");
 
-                if (float.TryParse(components[1], out result))
-                    y = Calc.Clamp(result, -1, 1);
-                else
-                    throw new ArgumentException("Vector Y-component is not a valid number");
+                    if (float.TryParse(components[1], out result))
+                        y = Calc.Clamp(result, -1, 1);
+                    else
+                        throw new ArgumentException("Vector Y-component is not a valid number");
+                }
 
                 if (vectorInputAction.Has(Actions.MoveX | Actions.MoveY))
                     move = new(x, y);
