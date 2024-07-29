@@ -60,9 +60,8 @@ public static class Manager
 
         if (menuOpen)
             optionsMenu.Update();
+        
         // Update the tas
-        // This actually doesn't do anything this frame, its for the next frame
-        // Foster updates inputs before updating the Game
         else if (CurrentTAS != null)
         {
             if (KeyPressed(Keys.Space))

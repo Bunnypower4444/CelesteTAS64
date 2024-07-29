@@ -45,6 +45,18 @@ public static class Input
     {
         PreviousState = CurrentState;
         CurrentState = state;
+        
+        // Update all buttons
+        Controls.Move.Update();
+        Controls.Camera.Update();
+        Controls.Menu.Update();
+
+        Controls.Jump.Update();
+        Controls.Dash.Update();
+        Controls.Climb.Update();
+        Controls.Pause.Update();
+        Controls.Confirm.Update();
+        Controls.Cancel.Update();
     }
 
     public static bool GetInputValue(Actions inputType)
@@ -70,7 +82,10 @@ public static class Input
         else
             return vector.Y;
     }
+}
 
+public static class InputHelper
+{
     public static VirtualButton Add(this VirtualButton button, params Actions[] inputs)
     {
         foreach (var type in inputs)
@@ -111,5 +126,20 @@ public static class Input
         }
 
         return button;
+    }
+
+    public static void Update(this VirtualButton button)
+    {
+        // reflection is kinda funny
+        var method = typeof(VirtualButton).GetMethod("Update", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        method?.Invoke(button, null);
+    }
+
+    public static void Update(this VirtualStick stick)
+    {
+        stick.Horizontal.Positive.Update();
+        stick.Horizontal.Negative.Update();
+        stick.Vertical.Positive.Update();
+        stick.Vertical.Negative.Update();
     }
 }
