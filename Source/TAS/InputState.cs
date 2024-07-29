@@ -16,7 +16,7 @@ public enum Actions
     MenuUp = 1 << 10, MenuDown = 1 << 11, MenuLeft = 1 << 12, MenuRight = 1 << 13
 }
 
-public static class ActionsExt
+public static class ActionsHelper
 {
     public static string GetAbbreviation(this Actions actions) => actions switch
     {
@@ -29,13 +29,32 @@ public static class ActionsExt
         Actions.Camera    => "E",
         Actions.Climb     => "G",
         Actions.Pause     => "P",
-        Actions.Confirm   => "A",
-        Actions.Cancel    => "B",
+        Actions.Confirm   => "O",
+        Actions.Cancel    => "I",
         Actions.MenuUp    => "U",
         Actions.MenuDown  => "D",
         Actions.MenuLeft  => "L",
         Actions.MenuRight => "R",
         _ => throw new NotImplementedException("Must be a single action")
+    };
+
+    public static Actions GetActionFromChar(string action) => action.ToUpper() switch
+    {
+        "M" => Actions.Move,
+        "J" => Actions.Jump,
+        "K" => Actions.Jump2,
+        "X" => Actions.Dash,
+        "C" => Actions.Dash2,
+        "E" => Actions.Camera,
+        "G" => Actions.Climb,
+        "P" => Actions.Pause,
+        "O" => Actions.Confirm,
+        "I" => Actions.Cancel,
+        "U" => Actions.MenuUp,
+        "D" => Actions.MenuDown,
+        "L" => Actions.MenuLeft,
+        "R" => Actions.MenuRight,
+        _ => Actions.None
     };
 }
 

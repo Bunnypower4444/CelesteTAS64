@@ -47,6 +47,154 @@ public partial class TAS(List<TAS.InputRecord> inputs)
         framesToNext = inputs.Count > 0 ? inputs[0].Frames : 0;
     }
 
+    public void Write(InputState state)
+    {
+        // if we're at the end, append it to the end
+        if (Finished)
+        {
+            // extend the previous input by 1 frame if they are the same
+            //  (and make sure there even is one first)
+            if (inputIndex > 0 && state == inputs[inputIndex - 1].State)
+            {
+                inputs[inputIndex - 1] = inputs[inputIndex - 1] with
+                    { Frames = inputs[inputIndex - 1].Frames + 1 };
+            }
+            else
+            {
+                inputs.Add(new(state, 1));
+                inputIndex++;
+            }
+        }
+
+        // overwrite previous things
+        else
+        {
+            // if the current input is the same as the new input, don't do anything
+            if (CurrentInput.State == state)
+                return;
+
+            // before
+            if (framesToNext >= CurrentInput.Frames)
+            {
+                inputs[inputIndex] = CurrentInput with
+                    { Frames = CurrentInput.Frames - 1 };
+
+                if (!CombinePrevious(state))
+                    inputs.Insert(inputIndex, new(state, 1));
+                
+                framesToNext = 1;
+            }
+            // after
+            else if (framesToNext <= 1)
+            {
+                inputs[inputIndex] = CurrentInput with
+                    { Frames = CurrentInput.Frames - 1 };
+                
+                if (!CombineNext(state))
+                {
+                    inputs.Insert(inputIndex + 1, new(state, 1));
+                    framesToNext = 1;
+                }
+
+                inputIndex++;
+            }
+            // middle
+            else
+            {
+                inputs[inputIndex] = CurrentInput with
+                    { Frames = CurrentInput.Frames - framesToNext };
+                
+                inputs.Insert(inputIndex + 1, new(state, 1));
+                inputs.Insert(inputIndex + 2, new(CurrentInput.State, framesToNext - 1));
+                inputIndex++;
+                framesToNext = 1;
+            }
+        }
+    }
+
+    public void Insert(InputState state)
+    {
+        // handle empty case
+        if (inputs.Count <= 0)
+        {
+            inputs.Add(new(state, 1));
+            framesToNext = 1;
+            return;
+        }
+
+        // find where to insert based on if it is at the start, middle or end of an input
+        // start
+        if (framesToNext >= CurrentInput.Frames)
+        {
+            framesToNext = 1;
+            if (!CombinePrevious(state))
+            {
+                inputIndex--;
+                if (!CombineNext(state))
+                    inputs.Insert(++inputIndex, new(state, 1));
+                else
+                    inputIndex++;
+            }
+        }
+        // end
+        else if (framesToNext == 1)
+        {
+            framesToNext = 1;
+            inputIndex++;
+            if (!CombinePrevious(state))
+            {
+                inputIndex--;
+                if (!CombineNext(state))
+                    inputs.Insert(++inputIndex, new(state, 1));
+                else
+                    inputIndex++;
+            }
+        }
+        // middle
+        else
+        {
+            if (state == CurrentInput.State)
+            {
+                inputs[inputIndex] = CurrentInput with
+                    { Frames = CurrentInput.Frames + 1 };
+                framesToNext++;
+                return;
+            }
+            
+            inputs[inputIndex] = CurrentInput with
+                { Frames = CurrentInput.Frames - framesToNext };
+            
+            inputs.Insert(inputIndex + 1, new(state, 1));
+            inputs.Insert(inputIndex + 2, new(CurrentInput.State, framesToNext));
+            inputIndex++;
+            framesToNext = 1;
+        }
+    }
+
+    private bool CombinePrevious(InputState state)
+    {
+        if (inputIndex <= 0 || inputs[inputIndex - 1].State != state)
+            return false;
+
+        inputIndex--;
+        inputs[inputIndex] = CurrentInput with
+            { Frames = CurrentInput.Frames + 1 };
+        return true;
+    }
+
+    private bool CombineNext(InputState state)
+    {
+        if (inputIndex >= inputs.Count - 1 || inputs[inputIndex + 1].State != state)
+            return false;
+
+        var nextIndex = inputIndex + 1;
+        inputs[nextIndex] = inputs[nextIndex] with
+            { Frames = inputs[nextIndex].Frames + 1 };
+
+        framesToNext = inputs[nextIndex].Frames;
+        return true;
+    }
+
     public static TAS LoadFile(string path)
     {
         if (!File.Exists(path))
@@ -146,7 +294,7 @@ public partial class TAS(List<TAS.InputRecord> inputs)
             // 
             else
             {
-                var newActions = GetActionFromChar(token);
+                var newActions = ActionsHelper.GetActionFromChar(token);
                 actions |= newActions;
 
                 if (newActions == Actions.None)
@@ -159,25 +307,6 @@ public partial class TAS(List<TAS.InputRecord> inputs)
 
         return new InputRecord(new InputState(actions, move, camera), numFrames);
     }
-
-    private static Actions GetActionFromChar(string action) => action.ToUpper() switch
-    {
-        "M" => Actions.Move,
-        "J" => Actions.Jump,
-        "K" => Actions.Jump2,
-        "X" => Actions.Dash,
-        "C" => Actions.Dash2,
-        "E" => Actions.Camera,
-        "G" => Actions.Climb,
-        "P" => Actions.Pause,
-        "A" => Actions.Confirm,
-        "B" => Actions.Cancel,
-        "U" => Actions.MenuUp,
-        "D" => Actions.MenuDown,
-        "L" => Actions.MenuLeft,
-        "R" => Actions.MenuRight,
-        _ => Actions.None
-    };
 
 
     [GeneratedRegex("\\s\\s+")]

@@ -31,6 +31,10 @@ public class ControlsConfig
 
 		private bool Condition(VirtualButton vb, VirtualButton.IBinding binding)
 		{
+			// TAS: Disable normal input if a TAS is running
+			if (TAS.Manager.Running)
+				return false;
+
 			if (!OnlyFor.HasValue && !NotFor.HasValue)
 				return true;
 
@@ -53,14 +57,15 @@ public class ControlsConfig
 
 		public void BindTo(VirtualButton button)
 		{
+			// TAS: have condition on every bind
 			if (Key.HasValue)
-				button.Add(Key.Value);
+				button.Add(Condition, Key.Value);
 
 			if (Button.HasValue)
 				button.Add(Condition, 0, Button.Value);
 
 			if (MouseButton.HasValue)
-				button.Add(MouseButton.Value);
+				button.Add(Condition, MouseButton.Value);
 
 			if (Axis.HasValue)
 				button.Add(Condition, 0, Axis.Value, AxisInverted ? -1 : 1, AxisDeadzone);
