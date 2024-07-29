@@ -1,3 +1,12 @@
+# CelesteTAS 64
+This is a TAS tool for Celeste 64 that is work in progress. I just found out that there already is a [TAS tool made by psyGamer](https://github.com/psyGamer/Celeste64-TAS) after I started working on this (which is probably much better than this), but I'm still going to make updates to this because why not.
+
+ok
+
+[Original game repository](https://github.com/ExOK/Celeste64)
+
+Original Readme:
+
 # Celeste 64: Fragments of the Mountain
 This is the source code and general information for *Celeste 64: Fragments of the Mountain*, a game made by the original Celeste developers in under 2 weeks for Celeste's 6th Anniversary. We haven't done a lot of 3D development so much of this is not very optimized, it's coded in libraries mostly intended for 2D games, and we put it all together very, very quickly. Consider this similar to a weekend jam game, so experiment and learn at your own risk!  
 
