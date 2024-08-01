@@ -198,6 +198,11 @@ public static class Manager
                 recordingInput.Move = recordingMoveStick.Value;
             
             recordingInput.Camera = recordingCameraStick.Value;
+
+            if (recordingInput.Move != Vec2.Zero)
+                recordingInput.Actions |= Actions.Move;
+            if (recordingInput.Camera != Vec2.Zero)
+                recordingInput.Actions |= Actions.Camera;
         }
         // Frame stepping recording
         else
