@@ -10,7 +10,7 @@ public static class Manager
 
     public static readonly Dictionary<string, TAS> TASes = [];
     public static TAS? CurrentTAS { get; private set; }
-    public static bool Running => CurrentTAS != null && ((CurrentTAS.CurrentFrame > 0 && !CurrentTAS.Finished) || recording);
+    public static bool Running => !menuOpen && CurrentTAS != null && ((CurrentTAS.CurrentFrame > 0 && !CurrentTAS.Finished) || recording);
 
     private static bool initialized = false;
     private static bool menuOpen = false;
