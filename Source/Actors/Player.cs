@@ -258,6 +258,7 @@ public class Player : Actor, IHaveModels, IHaveSprites, IRidePlatforms, ICastPoi
 		GetCameraTarget(out var orig, out var target, out _);
 		World.Camera.LookAt = target;
 		World.Camera.Position = orig;
+		World.CameraDestPos = orig;
 	}
 
 	public override void Update()
@@ -476,6 +477,7 @@ public class Player : Actor, IHaveModels, IHaveSprites, IRidePlatforms, ICastPoi
 			
             World.Camera.Position += (cameraPos - World.Camera.Position) * (1 - MathF.Pow(0.01f, Time.Delta));
             World.Camera.LookAt = lookAt;
+			World.CameraDestPos = cameraPos;
 
 			float targetFOV = Calc.ClampedMap(velocity.XY().Length(), MaxSpeed * 1.2f, 120, 1, 1.2f);
 
@@ -598,6 +600,9 @@ public class Player : Actor, IHaveModels, IHaveSprites, IRidePlatforms, ICastPoi
 	{
 		get
 		{
+			if (TAS.Manager.Running)
+				return Controls.Move.Value.Normalized();
+
 			if (Controls.Move.Value == Vec2.Zero)
 				return Vec2.Zero;
 

@@ -51,6 +51,7 @@ public class Game : Module
 	public static Game Instance => instance ?? throw new Exception("Game isn't running");
 
 	private readonly Stack<Scene> scenes = new();
+	public Scene Scene => scenes.Peek();
 	private readonly Target target = new(Width, Height, [TextureFormat.Color, TextureFormat.Depth24Stencil8]);
 	private readonly Batcher batcher = new();
 	private Transition transition;

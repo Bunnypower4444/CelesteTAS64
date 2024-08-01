@@ -21,6 +21,33 @@ public static class Manager
     public enum RecordingMode { Overwrite, Insert };
     private static RecordingMode recordingMode = RecordingMode.Insert;
     private static InputState recordingInput;
+    // Used as stick inputs for recording mode
+    private static readonly VirtualStick recordingMoveStick = new("Move", VirtualAxis.Overlaps.TakeNewer, 0.35f);
+    private static readonly VirtualStick recordingCameraStick = new("Camera", VirtualAxis.Overlaps.TakeNewer, 0.35f);
+    private static float stickAngle, stickMangitude;
+    private static readonly NumberInput stickAngleInput = new(0,
+        () => stickAngle,
+        value => stickAngle = value
+    ) { Min = -360, Max = 360, Label = "Angle" };
+    private static readonly NumberInput stickMagnitudeInput = new(0,
+        () => stickMangitude,
+        value => stickMangitude = value
+    ) { Min = 0, Max = 1, Label = "Magnitude" };
+    private static StickActions? editingStickAction = null;
+    private static int stickInputIndex = 0;
+
+    static Manager() 
+    {
+        recordingMoveStick.Horizontal.AddPositive(Keys.Right);
+        recordingMoveStick.Horizontal.AddNegative(Keys.Left);
+        recordingMoveStick.Vertical.AddPositive(Keys.Down);
+        recordingMoveStick.Vertical.AddNegative(Keys.Up);
+
+        recordingCameraStick.Horizontal.AddPositive(Keys.D);
+        recordingCameraStick.Horizontal.AddNegative(Keys.A);
+        recordingCameraStick.Vertical.AddPositive(Keys.S);
+        recordingCameraStick.Vertical.AddNegative(Keys.W);
+    }
 
     private static void SetMenuOpen(bool open)
     {
@@ -57,9 +84,14 @@ public static class Manager
 
         if (KeyPressed(Keys.F5))
             SetMenuOpen(!menuOpen);
+        if (KeyPressed(Keys.F3))
+            debugDraw = !debugDraw;
 
         if (menuOpen)
+        {
             optionsMenu.Update();
+            return false;
+        }
         
         // Update the tas
         else if (CurrentTAS != null)
@@ -148,10 +180,83 @@ public static class Manager
                 recordingInput.Actions |= Actions.MenuLeft;
             if (KeyDown(Keys.R))
                 recordingInput.Actions |= Actions.MenuRight;
+
+            if (Game.Instance.Scene is World world)
+            {
+                Vec2 forward, side;
+
+                var cameraForward = (world.Camera.LookAt - world.CameraDestPos).Normalized().XY();
+                if (cameraForward.X == 0 && cameraForward.Y == 0)
+                    forward = world.Get<Player>()?.Facing ?? new(0, 1);
+                else
+                    forward = cameraForward.Normalized();
+                side = Vec2.Transform(forward, Matrix3x2.CreateRotation(MathF.PI / 2));
+
+                recordingInput.Move = forward * -recordingMoveStick.Value.Y + side * -recordingMoveStick.Value.X;
+            }
+            else
+                recordingInput.Move = recordingMoveStick.Value;
+            
+            recordingInput.Camera = recordingCameraStick.Value;
         }
         // Frame stepping recording
         else
         {
+            if (KeyPressed(Keys.M))
+            {
+                recordingInput.Actions |= Actions.Move;
+                editingStickAction = editingStickAction != StickActions.Move ? StickActions.Move : null;
+                if (editingStickAction == null)
+                {
+                    recordingInput.Move = Calc.AngleToVector(stickAngle * Calc.DegToRad, stickMangitude);
+                    stickAngleInput.UnFocus();
+                    stickMagnitudeInput.UnFocus();
+                    
+                    if (recordingInput.Move == Vec2.Zero)
+                        recordingInput.Actions &= ~Actions.Move;
+                }
+                else
+                {
+                    stickAngleInput.Focus();
+                    stickMagnitudeInput.UnFocus();
+                    stickAngle = recordingInput.Move.Angle();
+                    stickMangitude = recordingInput.Move.Length();
+                    stickInputIndex = 0;
+                }
+            }
+
+            int step = 0;
+            if (KeyPressed(Keys.Up))
+                step--;
+            if (KeyPressed(Keys.Down))
+                step++;
+            if (step != 0)
+            {
+                stickInputIndex += step;
+                if (stickInputIndex < 0)
+                    stickInputIndex = 1;
+                if (stickInputIndex > 1)
+                    stickInputIndex = 0;
+                
+                if (stickInputIndex == 0)
+                {
+                    stickAngleInput.Focus();
+                    stickMagnitudeInput.UnFocus();
+                }
+                else if (stickInputIndex == 1)
+                {
+                    stickAngleInput.UnFocus();
+                    stickMagnitudeInput.Focus();
+                }
+            }
+
+            if (editingStickAction != null)
+            {
+                stickAngleInput.Update();
+                stickMagnitudeInput.Update();
+                return;
+            }
+            
             if (KeyPressed(Keys.J))
                 recordingInput.Actions ^= Actions.Jump;
             if (KeyPressed(Keys.K))
@@ -250,6 +355,7 @@ public static class Manager
     private static readonly Menu optionsMenu = new();
 
     private static readonly Menu tasMenu = new();
+    private static bool debugDraw = false;
 
     public static void Render(Target target)
     {
@@ -259,7 +365,15 @@ public static class Manager
         if (paused && recording)
         {
             RenderRecordingUI(target);
+            if (editingStickAction != null)
+            {
+                stickAngleInput.Draw(batch, bounds.Center - 2 * Game.RelativeScale * Vec2.UnitY, new(0.5f, 1));
+                stickMagnitudeInput.Draw(batch, bounds.Center + 2 * Game.RelativeScale * Vec2.UnitY, new(0.5f, 0));
+            }
         }
+
+        if (debugDraw)
+            RenderDebug(target);
 
         // options menu
         if (menuOpen)
@@ -272,6 +386,23 @@ public static class Manager
         }
         batch.Render(target);
         batch.Clear();
+    }
+
+    private static void RenderDebug(Target target)
+    {
+        if (Game.Instance.Scene is World world && world.Get<Player>() is {} player)
+        {
+            var at = target.Bounds.TopRight + new Vec2(-4, 8) * Game.RelativeScale;
+            var lineHeight = Language.Current.SpriteFont.LineHeight;
+
+            UI.Text(batch, $"X: {player.Position.X}", at, new(1, 1), 0xffa0a0);
+            UI.Text(batch, $"Y: {player.Position.Y}", at + new Vec2(0, lineHeight), new(1, 1), 0xa0a0ff);
+            UI.Text(batch, $"Z: {player.Position.Z}", at + new Vec2(0, lineHeight * 2), new(1, 1), 0xa0ffa0);
+            UI.Text(batch, $"VX: {player.Velocity.X}", at + new Vec2(0, lineHeight * 3), new(1, 1), 0xffa0a0);
+            UI.Text(batch, $"VY: {player.Velocity.Y}", at + new Vec2(0, lineHeight * 4), new(1, 1), 0xa0a0ff);
+            UI.Text(batch, $"VZ: {player.Velocity.Z}", at + new Vec2(0, lineHeight * 5), new(1, 1), 0xa0ffa0);
+            UI.Text(batch, $"Facing: {player.Facing.Angle() * Calc.RadToDeg}", at + new Vec2(0, lineHeight * 6), new(1, 1), Color.White);
+        }
     }
 
     // renders the UI for recording inputs during frame stepping

@@ -9,6 +9,7 @@ public class World : Scene
 	public readonly record struct EntryInfo(string Map, string CheckPoint, bool Submap, EntryReasons Reason);
 
 	public Camera Camera = new();
+	public Vec3 CameraDestPos;
 	public Rng Rng = new(0);
 	public float HitStun = 0;
 	public bool Paused = false;
