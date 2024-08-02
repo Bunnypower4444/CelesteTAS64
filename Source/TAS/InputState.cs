@@ -18,6 +18,13 @@ public enum Actions
 
 public static class ActionsHelper
 {
+    public static Actions ToActions(this StickActions actions) => actions switch
+    {
+        StickActions.Move => Actions.Move,
+        StickActions.Camera => Actions.Camera,
+        _ => Actions.None
+    };
+
     public static string GetAbbreviation(this Actions actions) => actions switch
     {
         Actions.None      => string.Empty,
@@ -63,6 +70,13 @@ public enum StickAxis { X, Y };
 
 public record struct InputState(Actions Actions, Vec2 Move, Vec2 Camera)
 {
+    public readonly Vec2 GetStickInput(StickActions action) => action switch
+    {
+        StickActions.Move => Move,
+        StickActions.Camera => Camera,
+        _ => Vec2.Zero
+    };
+
     public override readonly string ToString()
     {
         var s = new StringBuilder();

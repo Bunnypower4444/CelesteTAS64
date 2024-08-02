@@ -400,13 +400,13 @@ public static class Manager
             var at = target.Bounds.TopRight + new Vec2(-4, 8) * Game.RelativeScale;
             var lineHeight = Language.Current.SpriteFont.LineHeight;
 
-            UI.Text(batch, $"X: {player.Position.X}", at, new(1, 1), 0xffa0a0);
-            UI.Text(batch, $"Y: {player.Position.Y}", at + new Vec2(0, lineHeight), new(1, 1), 0xa0a0ff);
-            UI.Text(batch, $"Z: {player.Position.Z}", at + new Vec2(0, lineHeight * 2), new(1, 1), 0xa0ffa0);
-            UI.Text(batch, $"VX: {player.Velocity.X}", at + new Vec2(0, lineHeight * 3), new(1, 1), 0xffa0a0);
-            UI.Text(batch, $"VY: {player.Velocity.Y}", at + new Vec2(0, lineHeight * 4), new(1, 1), 0xa0a0ff);
-            UI.Text(batch, $"VZ: {player.Velocity.Z}", at + new Vec2(0, lineHeight * 5), new(1, 1), 0xa0ffa0);
-            UI.Text(batch, $"Facing: {player.Facing.Angle() * Calc.RadToDeg}", at + new Vec2(0, lineHeight * 6), new(1, 1), Color.White);
+            UI.Text(batch, $"X: {player.Position.X}", at, new(1, 0), 0xffa0a0);
+            UI.Text(batch, $"Y: {player.Position.Y}", at + new Vec2(0, lineHeight), new(1, 0), 0xa0a0ff);
+            UI.Text(batch, $"Z: {player.Position.Z}", at + new Vec2(0, lineHeight * 2), new(1, 0), 0xa0ffa0);
+            UI.Text(batch, $"VX: {player.Velocity.X}", at + new Vec2(0, lineHeight * 3), new(1, 0), 0xffa0a0);
+            UI.Text(batch, $"VY: {player.Velocity.Y}", at + new Vec2(0, lineHeight * 4), new(1, 0), 0xa0a0ff);
+            UI.Text(batch, $"VZ: {player.Velocity.Z}", at + new Vec2(0, lineHeight * 5), new(1, 0), 0xa0ffa0);
+            UI.Text(batch, $"Facing: {player.Facing.Angle() * Calc.RadToDeg}", at + new Vec2(0, lineHeight * 6), new(1, 0), Color.White);
         }
     }
 
@@ -432,7 +432,37 @@ public static class Manager
             }
         }
 
-        Vec2 pos = new(1.5f * target.Width / 8, target.Height * 0.75f);
+        // Render a column of sticks
+        static void RenderStick(Vec2 pos, float stickSize, params StickActions[] actions)
+        {
+            // height from the text
+            float textHeight = 1.75f * Language.Current.SpriteFont.LineHeight + 2 * Game.RelativeScale + 4 * Game.RelativeScale;
+            // height from the stick graphic
+            float stickHeight = stickSize + 4 * Game.RelativeScale;
+            pos.Y -= actions.Length * (textHeight + stickHeight) * 0.5f;
+            
+            foreach (var action in actions)
+            {
+                var circleCenter = new Vec2(pos.X, pos.Y + stickSize * 0.5f + Game.RelativeScale);
+                // Draw the stick graphic
+                batch.PushMatrix(Matrix3x2.CreateScale(1.1f, 1.1f, circleCenter));
+                batch.Circle(new Circle(circleCenter, stickSize * 0.5f), 12, 0x202020);
+                batch.PopMatrix();
+                batch.Circle(new Circle(circleCenter, stickSize * 0.5f), 12, 0x404040);
+
+                batch.Circle(new Circle(circleCenter, 4 * Game.RelativeScale), 6, 0x202020);
+
+                var inputPosition = circleCenter + recordingInput.GetStickInput(action) * stickSize * 0.5f;
+                batch.Circle(new Circle(inputPosition, 4 * Game.RelativeScale), 6, Color.Red);
+
+                RenderButtons(new(pos.X, pos.Y + stickHeight + textHeight * 0.5f), action.ToActions());
+                pos.Y += textHeight + stickHeight;
+            }
+        }
+
+        Vec2 pos = new(0.5f * target.Width / 8, target.Height * 0.75f);
+        RenderStick(pos, 36 * Game.RelativeScale, StickActions.Move, StickActions.Camera);
+        pos.X += target.Width / 8;
         RenderButtons(pos, Actions.Jump, Actions.Jump2);
         pos.X += target.Width / 8;
         RenderButtons(pos, Actions.Dash, Actions.Dash2);

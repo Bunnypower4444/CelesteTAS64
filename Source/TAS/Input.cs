@@ -70,12 +70,7 @@ public static class Input
         => GetInputValue(inputType, axis, CurrentState);
     public static float GetInputValue(StickActions inputType, StickAxis axis, InputState state)
     {
-        var vector = inputType switch
-        {
-            StickActions.Move => state.Move,
-            StickActions.Camera => state.Camera,
-            _ => Vec2.Zero
-        };
+        var vector = state.GetStickInput(inputType);
 
         if (axis == StickAxis.X)
             return vector.X;
