@@ -24,17 +24,44 @@ public static class Manager
     // Used as stick inputs for recording mode
     private static readonly VirtualStick recordingMoveStick = new("Move", VirtualAxis.Overlaps.TakeNewer, 0.35f);
     private static readonly VirtualStick recordingCameraStick = new("Camera", VirtualAxis.Overlaps.TakeNewer, 0.35f);
-    private static float stickAngle, stickMangitude;
+    private static float stickAngle, stickMagnitude;
     private static readonly NumberInput stickAngleInput = new(0,
         () => stickAngle,
-        value => stickAngle = value
+        value =>
+        {
+            if (stickAngle != value)
+            {
+                stickAngle = value;
+                UpdateStickInput();
+            }
+        }
     ) { Min = -360, Max = 360, Label = "Angle" };
     private static readonly NumberInput stickMagnitudeInput = new(0,
-        () => stickMangitude,
-        value => stickMangitude = value
+        () => stickMagnitude,
+        value =>
+        {
+            if (stickMagnitude != value)
+            {
+                stickMagnitude = value;
+                UpdateStickInput();
+            }
+        }
     ) { Min = 0, Max = 1, Label = "Magnitude" };
     private static StickActions? editingStickAction = null;
     private static int stickInputIndex = 0;
+
+    private static void UpdateStickInput()
+    {
+        switch (editingStickAction)
+        {
+            case StickActions.Move:
+                recordingInput.Move = Calc.AngleToVector(stickAngle * Calc.DegToRad, stickMagnitude);
+                break;
+            case StickActions.Camera:
+                recordingInput.Camera = Calc.AngleToVector(-stickAngle * Calc.DegToRad, stickMagnitude);
+                break;
+        }
+    }
 
     static Manager() 
     {
@@ -181,21 +208,8 @@ public static class Manager
             if (KeyDown(Keys.R))
                 recordingInput.Actions |= Actions.MenuRight;
 
-            if (Game.Instance.Scene is World world)
-            {
-                Vec2 forward, side;
-
-                var cameraForward = (world.Camera.LookAt - world.CameraDestPos).Normalized().XY();
-                if (cameraForward.X == 0 && cameraForward.Y == 0)
-                    forward = world.Get<Player>()?.Facing ?? new(0, 1);
-                else
-                    forward = cameraForward.Normalized();
-                side = Vec2.Transform(forward, Matrix3x2.CreateRotation(MathF.PI / 2));
-
-                recordingInput.Move = forward * -recordingMoveStick.Value.Y + side * -recordingMoveStick.Value.X;
-            }
-            else
-                recordingInput.Move = recordingMoveStick.Value;
+            // recordingInput.Move = GetMoveInput(recordingMoveStick.Value);
+            recordingInput.Move = recordingMoveStick.Value;
             
             recordingInput.Camera = recordingCameraStick.Value;
 
@@ -213,7 +227,6 @@ public static class Manager
                 editingStickAction = editingStickAction != StickActions.Move ? StickActions.Move : null;
                 if (editingStickAction == null)
                 {
-                    recordingInput.Move = Calc.AngleToVector(stickAngle * Calc.DegToRad, stickMangitude);
                     stickAngleInput.UnFocus();
                     stickMagnitudeInput.UnFocus();
                     
@@ -222,41 +235,76 @@ public static class Manager
                 }
                 else
                 {
-                    stickAngleInput.Focus();
-                    stickMagnitudeInput.UnFocus();
-                    stickAngle = recordingInput.Move.Angle();
-                    stickMangitude = recordingInput.Move.Length();
+                    if (recordingInput.Camera == Vec2.Zero)
+                        recordingInput.Actions &= ~Actions.Camera;
+                    
+                    stickAngle = -recordingInput.Move.Angle() * Calc.RadToDeg;
+                    if (stickAngle == float.NegativeZero)
+                        stickAngle = 0;
+                    stickMagnitude = recordingInput.Move.Length();
                     stickInputIndex = 0;
+                    stickAngleInput.RefreshText();
+                    stickAngleInput.Focus(true);
+                    stickMagnitudeInput.RefreshText();
+                    stickMagnitudeInput.UnFocus();
                 }
             }
-
-            int step = 0;
-            if (KeyPressed(Keys.Up))
-                step--;
-            if (KeyPressed(Keys.Down))
-                step++;
-            if (step != 0)
+            else if (KeyPressed(Keys.E))
             {
-                stickInputIndex += step;
-                if (stickInputIndex < 0)
-                    stickInputIndex = 1;
-                if (stickInputIndex > 1)
-                    stickInputIndex = 0;
-                
-                if (stickInputIndex == 0)
-                {
-                    stickAngleInput.Focus();
-                    stickMagnitudeInput.UnFocus();
-                }
-                else if (stickInputIndex == 1)
+                recordingInput.Actions |= Actions.Camera;
+                editingStickAction = editingStickAction != StickActions.Camera ? StickActions.Camera : null;
+                if (editingStickAction == null)
                 {
                     stickAngleInput.UnFocus();
-                    stickMagnitudeInput.Focus();
+                    stickMagnitudeInput.UnFocus();
+                    
+                    if (recordingInput.Camera == Vec2.Zero)
+                        recordingInput.Actions &= ~Actions.Camera;
+                }
+                else
+                {
+                    if (recordingInput.Move == Vec2.Zero)
+                        recordingInput.Actions &= ~Actions.Move;
+                    
+                    stickAngle = -recordingInput.Camera.Angle() * Calc.RadToDeg;
+                    if (stickAngle == float.NegativeZero)
+                        stickAngle = 0;
+                    stickMagnitude = recordingInput.Camera.Length();
+                    stickInputIndex = 0;
+                    stickAngleInput.RefreshText();
+                    stickAngleInput.Focus(true);
+                    stickMagnitudeInput.RefreshText();
+                    stickMagnitudeInput.UnFocus();
                 }
             }
 
             if (editingStickAction != null)
             {
+                int step = 0;
+                if (KeyPressed(Keys.Up))
+                    step--;
+                if (KeyPressed(Keys.Down))
+                    step++;
+                if (step != 0)
+                {
+                    stickInputIndex += step;
+                    if (stickInputIndex < 0)
+                        stickInputIndex = 1;
+                    if (stickInputIndex > 1)
+                        stickInputIndex = 0;
+                    
+                    if (stickInputIndex == 0)
+                    {
+                        stickAngleInput.Focus();
+                        stickMagnitudeInput.UnFocus();
+                    }
+                    else if (stickInputIndex == 1)
+                    {
+                        stickAngleInput.UnFocus();
+                        stickMagnitudeInput.Focus();
+                    }
+                }
+
                 stickAngleInput.Update();
                 stickMagnitudeInput.Update();
                 return;
@@ -287,6 +335,25 @@ public static class Manager
             if (KeyPressed(Keys.R))
                 recordingInput.Actions ^= Actions.MenuRight;
         }
+    }
+
+    private static Vec2 GetMoveInput(Vec2 stickInput)
+    {
+        if (Game.Instance.Scene is World world)
+        {
+            Vec2 forward, side;
+
+            var cameraForward = (world.Camera.LookAt - world.CameraDestPos).Normalized().XY();
+            if (cameraForward.X == 0 && cameraForward.Y == 0)
+                forward = world.Get<Player>()?.Facing ?? new(0, 1);
+            else
+                forward = cameraForward.Normalized();
+            side = Vec2.Transform(forward, Matrix3x2.CreateRotation(MathF.PI / 2));
+
+            return forward * -stickInput.Y + side * -stickInput.X;
+        }
+        else
+            return stickInput;
     }
 
     private static void WriteToTAS(InputState input)
@@ -372,8 +439,27 @@ public static class Manager
             RenderRecordingUI(target);
             if (editingStickAction != null)
             {
-                stickAngleInput.Draw(batch, bounds.Center - 2 * Game.RelativeScale * Vec2.UnitY, new(0.5f, 1));
-                stickMagnitudeInput.Draw(batch, bounds.Center + 2 * Game.RelativeScale * Vec2.UnitY, new(0.5f, 0));
+                var height = 2.75f * Language.Current.SpriteFont.LineHeight;
+                var pos = bounds.Center - height * 0.5f * Vec2.UnitY;
+
+                batch.PushMatrix(Matrix3x2.CreateScale(0.75f) * Matrix3x2.CreateTranslation(pos));
+                UI.Text(batch, editingStickAction.ToString() ?? "Stick", Vec2.Zero, new(0.5f, 0f), Color.Gray);
+                batch.PopMatrix();
+
+                pos.Y += 0.75f * Language.Current.SpriteFont.LineHeight;
+                stickAngleInput.Draw(batch, pos, new(0.5f, 0));
+                stickMagnitudeInput.Draw(batch, pos + Language.Current.SpriteFont.LineHeight * Vec2.UnitY, new(0.5f, 0));
+
+                /* var textOffset = 0.375f * Language.Current.SpriteFont.LineHeight * Vec2.UnitY;
+                batch.PushMatrix(Matrix3x2.CreateScale(0.75f) * Matrix3x2.CreateTranslation(
+                    bounds.Center - textOffset
+                ));
+                UI.Text(batch, editingStickAction.ToString() ?? "Stick", Vec2.Zero, new(0.5f, 1f), Color.Gray);
+                batch.PopMatrix();
+
+                var pos = bounds.Center + textOffset;
+                stickAngleInput.Draw(batch, pos - 2 * Game.RelativeScale * Vec2.UnitY, new(0.5f, 1));
+                stickMagnitudeInput.Draw(batch, pos + 2 * Game.RelativeScale * Vec2.UnitY, new(0.5f, 0)); */
             }
         }
 
@@ -397,16 +483,16 @@ public static class Manager
     {
         if (Game.Instance.Scene is World world && world.Get<Player>() is {} player)
         {
-            var at = target.Bounds.TopRight + new Vec2(-4, 8) * Game.RelativeScale;
+            var at = new Vec2(target.Bounds.X + target.Bounds.Width * 0.6f, target.Bounds.Top) + new Vec2(-4, 0) * Game.RelativeScale;
             var lineHeight = Language.Current.SpriteFont.LineHeight;
 
-            UI.Text(batch, $"X: {player.Position.X}", at, new(1, 0), 0xffa0a0);
-            UI.Text(batch, $"Y: {player.Position.Y}", at + new Vec2(0, lineHeight), new(1, 0), 0xa0a0ff);
-            UI.Text(batch, $"Z: {player.Position.Z}", at + new Vec2(0, lineHeight * 2), new(1, 0), 0xa0ffa0);
-            UI.Text(batch, $"VX: {player.Velocity.X}", at + new Vec2(0, lineHeight * 3), new(1, 0), 0xffa0a0);
-            UI.Text(batch, $"VY: {player.Velocity.Y}", at + new Vec2(0, lineHeight * 4), new(1, 0), 0xa0a0ff);
-            UI.Text(batch, $"VZ: {player.Velocity.Z}", at + new Vec2(0, lineHeight * 5), new(1, 0), 0xa0ffa0);
-            UI.Text(batch, $"Facing: {player.Facing.Angle() * Calc.RadToDeg}", at + new Vec2(0, lineHeight * 6), new(1, 0), Color.White);
+            UI.Text(batch, $"X: {player.Position.X}", at, new(0, 0), 0xffa0a0);
+            UI.Text(batch, $"Y: {player.Position.Y}", at + new Vec2(0, lineHeight), new(0, 0), 0xa0a0ff);
+            UI.Text(batch, $"Z: {player.Position.Z}", at + new Vec2(0, lineHeight * 2), new(0, 0), 0xa0ffa0);
+            UI.Text(batch, $"VX: {player.Velocity.X}", at + new Vec2(0, lineHeight * 3), new(0, 0), 0xffa0a0);
+            UI.Text(batch, $"VY: {player.Velocity.Y}", at + new Vec2(0, lineHeight * 4), new(0, 0), 0xa0a0ff);
+            UI.Text(batch, $"VZ: {player.Velocity.Z}", at + new Vec2(0, lineHeight * 5), new(0, 0), 0xa0ffa0);
+            UI.Text(batch, $"Facing: {player.Facing.Angle() * Calc.RadToDeg}", at + new Vec2(0, lineHeight * 6), new(0, 0), Color.White);
         }
     }
 
@@ -452,7 +538,8 @@ public static class Manager
 
                 batch.Circle(new Circle(circleCenter, 4 * Game.RelativeScale), 6, 0x202020);
 
-                var inputPosition = circleCenter + recordingInput.GetStickInput(action) * stickSize * 0.5f;
+                var input = recordingInput.GetStickInput(action);
+                var inputPosition = circleCenter + input * stickSize * 0.5f;
                 batch.Circle(new Circle(inputPosition, 4 * Game.RelativeScale), 6, Color.Red);
 
                 RenderButtons(new(pos.X, pos.Y + stickHeight + textHeight * 0.5f), action.ToActions());

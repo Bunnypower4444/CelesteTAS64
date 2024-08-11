@@ -56,9 +56,7 @@ public class NumberInput(float value, Func<float> get, Action<float> set)
             if (result < Min || result > Max)
             {
                 Value = Calc.Clamp(result, Min, Max);
-                Text.Clear();
-                Text.Append(Value);
-                CursorIndex = Math.Min(CursorIndex, Text.Length);
+                RefreshText();
             }
             else
                 Value = result;
@@ -68,9 +66,9 @@ public class NumberInput(float value, Func<float> get, Action<float> set)
             IsValid = false;
     }
 
-    public void Focus()
+    public void Focus(bool force = false)
     {
-        if (focused)
+        if (focused && !force)
             return;
 
         focused = true;
@@ -85,10 +83,16 @@ public class NumberInput(float value, Func<float> get, Action<float> set)
         focused = false;
         // Set the text to Value.ToString() to make sure it is valid and to remove stuff like
         //  extra zeros
-        Text.Clear();
-        Text.Append(Value);
+        RefreshText();
         CursorIndex = Text.Length;
         IsValid = true;
+    }
+
+    public void RefreshText()
+    {
+        Text.Clear();
+        Text.Append(Value);
+        CursorIndex = Math.Min(CursorIndex, Text.Length);
     }
 
     public void Draw(Batcher batch, Vec2 at, Vec2 justify)
